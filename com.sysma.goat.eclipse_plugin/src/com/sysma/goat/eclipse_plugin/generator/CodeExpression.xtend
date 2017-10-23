@@ -26,6 +26,7 @@ import com.sysma.goat.eclipse_plugin.typing.ExpressionTyping.ExprType
 import java.util.List
 import com.sysma.goat.eclipse_plugin.goatComponents.UnaryMinus
 import com.sysma.goat.eclipse_plugin.goatComponents.NegativeIntConstant
+import com.sysma.goat.eclipse_plugin.goatComponents.OutEqualityComparison
 
 class CodeExpression {
 	def static cast(String typ, Expression expr, LocalVariableMap localAttributesMap, CharSequence attributesMap){
@@ -129,15 +130,7 @@ class CodeExpression {
 				binaryOperatorExtensor("goat.Or", expr.sub.map[getOutputPredicate(it, localAttributesMap, attrName)])
 			Not:
 				'''goat.Not(«getOutputPredicate(expr.expression, localAttributesMap, attrName)»)'''
-			Equality:
-			{
-				val isOpLImm = !isOPAttribute(expr.left)
-				val isOpRImm = !isOPAttribute(expr.right)
-					
-				'''goat.Comparison(«getOutputPredicate(expr.left, localAttributesMap, attrName)», «!isOpLImm», "«expr.op»", '''
-					+ '''«getOutputPredicate(expr.right, localAttributesMap, attrName)», «!isOpRImm»)'''
-			}
-			Comparison:
+			OutEqualityComparison:
 			{
 				val isOpLImm = !isOPAttribute(expr.left)
 				val isOpRImm = !isOPAttribute(expr.right)
@@ -149,19 +142,20 @@ class CodeExpression {
 				'''goat.«StringExtensions.toFirstUpper(expr.value)»()'''
 			RecAttributeRef:
 				'''"«expr.attribute»"'''
-			Expression:
-				CodeExpression.getExpressionWithAttributes(expr, localAttributesMap, attrName)
-			/*Plus, Minus, MulOrDiv,FunctionCall:
-				throw new IllegalArgumentException("Output predicate cannot contain expressions. Use updates.")
-			LocalAttributeRef:
-				localAttributesMap.readValue(expr.attribute)
 			IntConstant:
 				'''«expr.value»'''
 			StringConstant:
-				'''"«StringEscapeUtils.escapeJava(expr.value)»"'''
-			
+				'''"«expr.value»"'''
+			LocalAttributeRef:
+				localAttributesMap.readValue(expr.attribute)
 			ComponentAttributeRef:
-				throw new IllegalArgumentException("Output predicate cannot refer component attributes.")*/
+				'''«attrName».GetValue("«expr.attribute»")'''
+			FunctionCall:
+			{
+				val args = ((0..<expr.params.length).map[i|cast(expr.function.params.get(i).type, expr.params.get(i), localAttributesMap, attrName)]).join(", ")
+				'''f_«expr.function.name»(«args»)'''
+			}
+
 		}
 	}
 }
