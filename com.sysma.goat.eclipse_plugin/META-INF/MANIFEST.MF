@@ -1,0 +1,34 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.sysma.goat.eclipse_plugin
+Bundle-Vendor: My Company
+Bundle-Version: 1.0.0.qualifier
+Bundle-SymbolicName: com.sysma.goat.eclipse_plugin; singleton:=true
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.xtext,
+ org.eclipse.xtext.xbase,
+ org.eclipse.equinox.common;bundle-version="3.5.0",
+ org.eclipse.emf.ecore,
+ org.eclipse.xtext.xbase.lib,
+ org.antlr.runtime,
+ org.eclipse.xtext.util,
+ org.eclipse.xtend.lib,
+ org.eclipse.emf.common,
+ org.apache.commons.lang
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Export-Package: com.sysma.goat.eclipse_plugin,
+ com.sysma.goat.eclipse_plugin.generator,
+ com.sysma.goat.eclipse_plugin.goatComponents,
+ com.sysma.goat.eclipse_plugin.goatComponents.impl,
+ com.sysma.goat.eclipse_plugin.goatComponents.util,
+ com.sysma.goat.eclipse_plugin.goatInfrastructure,
+ com.sysma.goat.eclipse_plugin.goatInfrastructure.impl,
+ com.sysma.goat.eclipse_plugin.goatInfrastructure.util,
+ com.sysma.goat.eclipse_plugin.parser.antlr,
+ com.sysma.goat.eclipse_plugin.parser.antlr.internal,
+ com.sysma.goat.eclipse_plugin.scoping,
+ com.sysma.goat.eclipse_plugin.serializer,
+ com.sysma.goat.eclipse_plugin.services,
+ com.sysma.goat.eclipse_plugin.validation,
+ com.sysma.goat.eclipse_plugin.parser.antlr.lexer
+Import-Package: org.apache.log4j

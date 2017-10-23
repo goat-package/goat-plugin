@@ -1,0 +1,42 @@
+grammar com.sysma.goat.eclipse_plugin.GoatInfrastructure with org.eclipse.xtext.common.Terminals
+
+generate goatInfrastructure "http://www.sysma.com/goat/eclipse_plugin/GoatInfrastructure"
+
+Infrastructure:
+	SingleServer|Cluster|Ring|Tree
+;
+
+SingleServer:
+	'singleserver' name=ID '{'
+		('server' ':' server = STRING) & 
+		(('timeout' ':' timeout = INT)?)
+	'}'
+;
+
+Cluster:
+	'cluster' name=ID '{'
+		('message_queue' ':' message_queue = STRING) & 
+		('registration' ':' registration = STRING) & 
+		('mid_assigner' ':' mid_assigner = STRING) & 
+		('nodes' ':' '[' nodes += STRING (',' nodes += STRING)* ']') 
+	'}'
+;
+
+Ring:
+	'ring' name=ID '{'
+		('registration' ':' registration = STRING) & 
+		('mid_assigner' ':' mid_assigner = STRING) & 
+		('nodes' ':' '[' nodes += STRING (',' nodes += STRING)* ']') 
+	'}'
+;
+
+Tree:
+	'tree' name=ID '{'
+		('registration' ':' registration = STRING) & 
+		('nodes' ':' root = TreeNode) 
+	'}'
+;
+
+TreeNode:
+	address = STRING ('[' children += TreeNode (',' children += TreeNode)* ']')?
+;

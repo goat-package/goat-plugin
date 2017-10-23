@@ -1,0 +1,245 @@
+grammar com.sysma.goat.eclipse_plugin.GoatComponents with org.eclipse.xtext.common.Terminals
+
+generate goatComponents "http://www.sysma.com/goat/eclipse_plugin/GoatComponents"
+
+import "http://www.sysma.com/goat/eclipse_plugin/GoatInfrastructure" as infr
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+Model:
+	{Model}
+	'infrastructure' infrastructure = [infr::Infrastructure]
+	(processes += ProcessDefinition |
+	components += ComponentDefinition | 
+	functions += FuncDefinition |
+	environments += EnvironmentDefinition)*;
+
+//Process
+
+
+ProcessDefinition:
+	'process' name=ID ('=' block = PDPBlock | block = ProcessBlock)
+;
+
+PDPBlock returns ProcessBlock:
+	(statements += PDPSpawn "|")* statements += PDPCall
+;
+
+PDPSpawn returns ProcessSpawn :
+	proc = [ProcessDefinition]
+;
+
+PDPCall returns ProcessCall :
+	proc = [ProcessDefinition]
+;
+
+ProcessBlock:
+	"{"
+		{ProcessBlock} (statements += ProcessStatement)*
+	"}"
+;
+
+ProcessStatement:
+	ProcessSpawn | ProcessCall | ProcessSend | ProcessReceive | ProcessIf | ProcessSet | ProcessWaitFor | ProcessLoop
+;
+
+ProcessSpawn:
+	"spawn" "(" proc = [ProcessDefinition] ")"
+;
+
+ProcessCall:
+	"call" "(" proc = [ProcessDefinition] ")"
+;
+
+ProcessSend:
+	"send" "{" (msgOutParts+=Expression ("," msgOutParts+=Expression)*)? "}" "@" "("send_pred=Expression ")" 
+		updates = Update (print = PrintStatement)? ";"  
+;
+
+ProcessReceive:
+	ProcessReceiveSingle|ProcessReceiveMultiple
+;
+ProcessReceiveSingle:
+	"receive" cases += ReceiveCase ";" then += EmptyProcessBlock
+;
+EmptyProcessBlock returns ProcessBlock:
+	{ProcessBlock}
+;
+ProcessReceiveMultiple:
+	"receive" "{"
+		("case" cases += ReceiveCase ":" then += ProcessBlock)+ 
+	"}"
+;
+ReceiveCase:
+	 "(" cond = Expression ")" "{" (msgInParts+=ID ("," msgInParts+=ID)*)? "}"  
+		updates = Update (print = PrintStatement)? 
+;
+
+ProcessIf:
+	"if" "("cond += Expression")" ProcessThenBlock
+	("else""if" "("cond += Expression")" ProcessThenBlock)*
+	("else" ProcessThenBlock)?
+;
+fragment ProcessThenBlock :
+	"{" action+=(ProcessSend|ProcessReceive|ProcessSet) then += PTBThen "}"
+;
+PTBThen returns ProcessBlock:
+	{ProcessBlock} (statements += ProcessStatement)*
+;
+
+ProcessSet:
+	"set" update = Update (print = PrintStatement)? ";"
+;
+
+ProcessWaitFor:
+	"waitfor" "(" cond = Expression ")" update = Update (print = PrintStatement)?";"
+;
+
+ProcessLoop:
+	"loop" block = ProcessBlock
+;
+
+Update:
+	{Update} ("[" attribute+=(UpdateComponentAttribute|UpdateLocalAttribute) ":=" value += Expression 
+		("," attribute+=(UpdateComponentAttribute|UpdateLocalAttribute) ":=" value += Expression)* "]"
+	)?
+;
+UpdateComponentAttribute:
+	"comp""." atname = ID
+;
+UpdateLocalAttribute:
+	"proc""." atname = ID
+;
+
+PrintStatement:
+	/*PrintAllStatement|*/PrintFormattedStatement
+;
+
+PrintAllStatement:
+	{PrintAllStatement} "print"
+;
+
+PrintFormattedStatement:
+	"print" "(" toPrint = STRING ")"
+;
+
+
+
+// Component
+EnvInitValue returns Expression:
+	{NegativeIntConstant} "-" negvalue=INT |
+	{IntConstant} value=INT |
+	{StringConstant} value=STRING |
+	{BoolConstant} value=('true'|'false') 
+;
+
+Environment:
+	{Environment} "{"(attrs += ID ':=' vals+=EnvInitValue (","attrs += ID ':=' vals+=EnvInitValue)*)?"}"
+;
+
+
+EnvironmentDefinition:
+	'environment' name=ID env = Environment
+;
+
+ComponentDefinition:
+	"component" (envref = [EnvironmentDefinition]|env = Environment) ':' block = (PDPBlock|ProcessBlock)
+;
+
+// Expression
+Expression: Or;
+
+Or returns Expression:
+	And ({Or.sub+=current} "||" sub+=And)*
+;
+
+And returns Expression:
+	Equality ({And.sub+=current} "&&" sub+=Equality)*
+;
+
+Equality returns Expression:
+	Comparison (
+		{Equality.left=current} op=("=="|"!=")
+		right=Comparison
+	)?
+;
+
+Comparison returns Expression:
+	PlusOrMinus (
+		{Comparison.left=current} op=(">="|"<="|">"|"<")
+		right=PlusOrMinus
+	)?
+;
+
+PlusOrMinus returns Expression:
+	MulOrDiv (
+		({Plus.left=current} '+' | {Minus.left=current} '-' | {Concatenate.left=current} '++') 
+		right=MulOrDiv
+	)?
+;
+
+MulOrDiv returns Expression:
+	Primary (
+		{MulOrDiv.left=current} op=('*'|'/'|'%') 
+		right=Primary
+	)?
+;
+
+Primary returns Expression:
+	'(' Expression ')' |
+	{UnaryMinus} "-" expression=Primary |
+	{Not} "!" expression=Primary |
+	Atomic
+;
+
+LRef:
+	FuncParam|FuncVarDeclaration
+;
+
+Atomic returns Expression:
+	{IntConstant} value=INT |
+	{StringConstant} value=STRING |
+	{BoolConstant} value=('true'|'false') |
+	{LocalVarRef} ref=[LRef] |
+	{LocalAttributeRef} "proc" "." attribute=ID |
+	{FunctionCall} function=[FuncDefinition]"("(params+=Expression(","params+=Expression)*)?")"|
+	{ComponentAttributeRef} "comp""."attribute=ID |
+	{RecAttributeRef} "receiver""."attribute=ID
+;
+
+terminal TYPE:
+	('int'|'string'|'bool')
+;
+
+// Functions
+FuncParam:
+	type = TYPE name = ID
+;
+FuncDefinition:
+	'function' type=TYPE name=ID '('(params+=FuncParam (',' params+=FuncParam)*)?')' blk = FuncBlock
+;
+FuncBlock:
+	'{' {FuncBlock} (statements += FuncStatement)* '}'
+;
+FuncStatement:
+	(FuncVarAssign | FuncIfElse | FuncReturn | FuncVarDeclaration) 
+;
+
+FuncVarDeclaration:
+	'var' name = ID '=' val = Expression
+;
+
+FuncVarAssign:
+	var = [FuncVarDeclaration] '=' val = Expression
+;
+
+FuncIfElse:
+	'if' '('test += Expression')' then += FuncBlock
+	('else' 'if' '('test += Expression')' then += FuncBlock)*
+	('else' elseBranch = FuncBlock)?
+;
+FuncReturn:
+	'return' val = Expression
+;
+
+//@Override 
+//terminal INT returns ecore::EInt: ('-')?('0'..'9')+;
