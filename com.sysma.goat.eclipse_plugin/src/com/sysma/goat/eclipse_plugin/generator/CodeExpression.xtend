@@ -130,16 +130,22 @@ class CodeExpression {
 				binaryOperatorExtensor("goat.Or", expr.sub.map[getOutputPredicate(it, localAttributesMap, attrName)])
 			Not:
 				'''goat.Not(«getOutputPredicate(expr.expression, localAttributesMap, attrName)»)'''
+			BoolConstant:
+				'''goat.«StringExtensions.toFirstUpper(expr.value)»()'''
+			default:
+				getOutputPredicateExpr(expr, localAttributesMap, attrName)
+		}
+	}
+	def static CharSequence getOutputPredicateExpr(Expression expr, LocalVariableMap localAttributesMap, CharSequence attrName){
+		switch(expr){		
 			OutEqualityComparison:
 			{
 				val isOpLImm = !isOPAttribute(expr.left)
 				val isOpRImm = !isOPAttribute(expr.right)
 					
-				'''goat.Comparison(«getOutputPredicate(expr.left, localAttributesMap, attrName)», «!isOpLImm», "«expr.op»", '''
-					+ '''«getOutputPredicate(expr.right, localAttributesMap, attrName)», «!isOpRImm»)'''
+				'''goat.Comparison(«getOutputPredicateExpr(expr.left, localAttributesMap, attrName)», «!isOpLImm», "«expr.op»", '''
+					+ '''«getOutputPredicateExpr(expr.right, localAttributesMap, attrName)», «!isOpRImm»)'''
 			}
-			BoolConstant:
-				'''goat.«StringExtensions.toFirstUpper(expr.value)»()'''
 			RecAttributeRef:
 				'''"«expr.attribute»"'''
 			IntConstant:
@@ -150,6 +156,8 @@ class CodeExpression {
 				localAttributesMap.readValue(expr.attribute)
 			ComponentAttributeRef:
 				'''«attrName».GetValue("«expr.attribute»")'''
+			BoolConstant:
+				'''«expr.value»'''
 			FunctionCall:
 			{
 				val args = ((0..<expr.params.length).map[i|cast(expr.function.params.get(i).type, expr.params.get(i), localAttributesMap, attrName)]).join(", ")
