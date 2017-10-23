@@ -51,7 +51,7 @@ ProcessCall:
 ;
 
 ProcessSend:
-	"send" "{" (msgOutParts+=Expression ("," msgOutParts+=Expression)*)? "}" "@" "("send_pred=Expression ")" 
+	"send" "{" (msgOutParts+=Expression ("," msgOutParts+=Expression)*)? "}" "@" "("send_pred=OutputPredicate ")" 
 		updates = Update (print = PrintStatement)? ";"  
 ;
 
@@ -202,12 +202,49 @@ Atomic returns Expression:
 	{LocalVarRef} ref=[LRef] |
 	{LocalAttributeRef} "proc" "." attribute=ID |
 	{FunctionCall} function=[FuncDefinition]"("(params+=Expression(","params+=Expression)*)?")"|
-	{ComponentAttributeRef} "comp""."attribute=ID |
-	{RecAttributeRef} "receiver""."attribute=ID
+	{ComponentAttributeRef} "comp""."attribute=ID //|
+	//{RecAttributeRef} "receiver""."attribute=ID
 ;
 
 terminal TYPE:
 	('int'|'string'|'bool')
+;
+
+// OutputPredicate
+OutputPredicate returns Expression: OutOr;
+
+OutOr returns Expression:
+	OutAnd ({Or.sub+=current} "||" sub+=OutAnd)*
+;
+
+OutAnd returns Expression:
+	OutEqualityComparison ({And.sub+=current} "&&" sub+=OutEqualityComparison)*
+;
+
+OutEqualityComparison returns Expression:
+	OutPrimary | 
+	( {OutEqualityComparison} left= OutAtomicOrRec op=("=="|"!="|">="|"<="|">"|"<") right=OutAtomicOrRec )
+;
+
+
+OutPrimary returns Expression:
+	'(' OutputPredicate ')' |
+	{Not} "!" expression=OutPrimary |
+	{BoolConstant} value=('true'|'false') 
+;
+
+OutAtomicOrRec returns Expression:
+	({RecAttributeRef} "receiver""."attribute=ID) |
+	OutAtomic
+;
+
+OutAtomic returns Expression:
+	{IntConstant} value=INT |
+	{StringConstant} value=STRING |
+	{BoolConstant} value=('true'|'false') |
+	{FunctionCall} function=[FuncDefinition]"("(params+=OutAtomic(","params+=OutAtomic)*)?")"|
+	{LocalAttributeRef} "proc" "." attribute=ID |
+	{ComponentAttributeRef} "comp""."attribute=ID
 ;
 
 // Functions
